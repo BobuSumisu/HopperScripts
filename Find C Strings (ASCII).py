@@ -1,4 +1,8 @@
+import time
+
 doc = Document.getCurrentDocument()
+
+start_time = time.clock()
 
 def is_valid_ascii(byte):
   return byte >= 0x20 and byte <= 0x7e
@@ -7,11 +11,10 @@ def is_null(byte):
   return byte == 0x00
 
 MIN_LEN = 4
-strings = []
-addresses = []
 
+num_strings = 0
 start_string = 0
-curr_string = ""
+string_len = 0
 
 for seg_id in range(0, doc.getSegmentCount()):
   seg = doc.getSegment(seg_id)
@@ -23,26 +26,21 @@ for seg_id in range(0, doc.getSegmentCount()):
     val = seg.readByte(adr)
 
     if is_valid_ascii(val):
-      curr_string += chr(val)
+      string_len += 1
       if start_string == 0:
         start_string = adr
     elif is_null(val):
-      if len(curr_string) > MIN_LEN:
-        strings.append(curr_string)
-        addresses.append(start_string)
-        curr_string = ""
+      if string_len >= MIN_LEN:
+        seg.setTypeAtAddress(start_string, string_len + 1, Segment.TYPE_ASCII)
+        num_strings += 1
+        string_len = 0
         start_string = 0
       else:
-        curr_string = ""
         start_string = 0
+        string_len = 0
     else:
-      curr_string = ""
       start_string = 0
+      string_len = 0
 
-for i in range(0, len(strings)):
-  string = strings[i]
-  adr = addresses[i]
-  seg = doc.getSegmentAtAddress(adr)
-  seg.setTypeAtAddress(adr, len(string) + 1, Segment.TYPE_ASCII) 
-
-doc.log("Found and marked " + str(len(strings)) + " strings.")
+elapsed = (time.clock() - start_time)
+doc.log("Found and marked " + str(num_strings) + " strings in " + str(elapsed) + " seconds.")
